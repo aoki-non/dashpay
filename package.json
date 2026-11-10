@@ -1,14 +1,15 @@
 {
-  "name": "dashpay-nimiq-miniapp",
+  "name": "dashpay-miniapp",
   "version": "1.0.0",
   "type": "module",
-  "description": "Nimiq Pay Mini-App: Multi-fiat invoicing in Colones, Dalasi or Euros, cross-chain payment via Aurora Intents, settled in USDT on Polygon in Nimiq Pay.",
+  "description": "DashPay Mini-App: Multi-fiat invoicing in Colones, Dalasi or Euros, cross-chain payment via Aurora Intents, settled in USDT on Polygon.",
   "scripts": {
-    "server": "node server/index.js",
-    "client": "vite --host",
-    "build": "vite build",
-    "preview": "vite preview",
-    "dev": "concurrently -n \"BACKEND,FRONTEND\" -c \"cyan,amber\" \"node server/index.js\" \"vite --host\""
+    "server": "node backend/index.js",
+    "client": "cd frontend && vite --host",
+    "build": "cd frontend && vite build",
+    "preview": "cd frontend && vite preview",
+    "dev": "concurrently -n \"BACKEND,FRONTEND\" -c \"cyan,amber\" \"node backend/index.js\" \"npm run client\"",
+    "test": "node --test backend/tests/api.test.js"
   },
   "dependencies": {
     "@nimiq/mini-app-sdk": "^0.2.5",

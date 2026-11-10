@@ -98,6 +98,27 @@ The frontend monitors the swap lifecycle via the Aurora Intents status endpoint:
 
 ---
 
+## 📁 Project Structure
+
+```
+dashpay/
+├── frontend/          # React + Vite + Tailwind mini-app
+│   ├── index.html
+│   ├── vite.config.js
+│   ├── public/        # Static assets (logo, icons)
+│   └── src/           # Components, screens, services
+├── backend/           # Express API (FX, invoices, quotes, status)
+│   ├── index.js       # Server entry (also serves the frontend build)
+│   ├── config.js
+│   ├── routes/
+│   ├── services/
+│   └── tests/         # node:test suite (`npm test`)
+├── .env.example       # Copy to .env and fill in
+└── package.json       # Root scripts to run both sides
+```
+
+---
+
 ## 🛠️ Getting Started
 
 ### Prerequisites

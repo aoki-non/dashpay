@@ -4,4 +4,6 @@ dist/
 .env
 .npm
 *.log
+backend/data/
+generated_images/
 
