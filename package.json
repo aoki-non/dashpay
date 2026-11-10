@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "description": "DashPay Mini-App: Multi-fiat invoicing in Colones, Dalasi or Euros, cross-chain payment via Aurora Intents, settled in USDT on Polygon.",
+  "license": "MIT",
   "scripts": {
     "server": "node backend/index.js",
     "client": "cd frontend && vite --host",
@@ -30,6 +31,7 @@
     "autoprefixer": "^10.4.27",
     "concurrently": "^9.2.1",
     "postcss": "^8.5.6",
+    "puppeteer-core": "^25.17.0",
     "tailwindcss": "^4.3.5",
     "vite": "^8.0.0"
   }

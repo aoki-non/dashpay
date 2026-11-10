@@ -7,3 +7,33 @@ dist/
 backend/data/
 generated_images/
 
+# Media & Demo Files
+video_assets/
+**/demo_assets/
+*.mp4
+*.mov
+*.webm
+*.avi
+*.mkv
+*.m4v
+*.flv
+*.wmv
+*.mp3
+*.wav
+*.vtt
+*.png.tmp
+test_screenshot.png
+demo/
+demos/
+videos/
+demo_videos/
+recordings/
+frontend/public/demo.html
+frontend/public/render_studio.html
+capture_*.js
+record_master.js
+generate_*.py
+mix_audio.py
+test_pronunciation.py
+
+
