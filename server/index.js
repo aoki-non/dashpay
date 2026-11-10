@@ -8,8 +8,6 @@ import invoiceRoutes from './routes/invoices.js';
 import tokenRoutes from './routes/tokens.js';
 import quoteRoutes from './routes/quote.js';
 import statusRoutes from './routes/status.js';
-import simulateRoutes from './routes/simulate.js';
-import { seedInitialInvoices } from './services/invoiceStore.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -25,17 +23,17 @@ app.use('/api/invoices', invoiceRoutes);
 app.use('/api/tokens', tokenRoutes);
 app.use('/api/quote', quoteRoutes);
 app.use('/api/status', statusRoutes);
-app.use('/api/simulate', simulateRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
-    service: 'DashPay - Cross-Chain Merchant Gateway',
+    service: 'Nimiq Pay Cross-Chain Merchant Gateway',
     timestamp: new Date().toISOString(),
     supportedFiat: Object.keys(CONFIG.SUPPORTED_FIAT),
-    destinationChain: 'Polygon',
-    supportedStablecoins: Object.keys(CONFIG.POLYGON_STABLECOINS)
+    destinationChain: 'Polygon (137)',
+    destinationToken: CONFIG.POLYGON.usdt,
+    hasOfficialApiKey: Boolean(CONFIG.AURORA_INTENTS_API_KEY)
   });
 });
 
@@ -51,15 +49,13 @@ app.use((req, res, next) => {
   next();
 });
 
-// Seed demo data on start
-seedInitialInvoices();
-
 const server = app.listen(CONFIG.PORT, () => {
-  console.log(`🚀 DashPay Server running on http://localhost:${CONFIG.PORT}`);
+  console.log(`🚀 Nimiq Pay Gateway running on http://localhost:${CONFIG.PORT}`);
   console.log(`   - FX Endpoint: http://localhost:${CONFIG.PORT}/api/fx/rates`);
   console.log(`   - Invoices Endpoint: http://localhost:${CONFIG.PORT}/api/invoices`);
   console.log(`   - Tokens Endpoint: http://localhost:${CONFIG.PORT}/api/tokens`);
-  console.log(`   - Aurora Intents Connected: ${CONFIG.AURORA_INTENTS_URL}`);
+  console.log(`   - Settlement: USDT on Polygon (${CONFIG.POLYGON.usdt.contractAddress})`);
+  console.log(`   - Aurora Intents Mode: ${CONFIG.AURORA_INTENTS_API_KEY ? 'Official API Key Configured' : 'Public Solver Gateway'}`);
 });
 
 export default app;

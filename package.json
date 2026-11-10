@@ -1,16 +1,17 @@
 {
-  "name": "dashpay",
+  "name": "dashpay-nimiq-miniapp",
   "version": "1.0.0",
   "type": "module",
-  "description": "Cross-chain merchant payment gateway powered by Aurora Intents. Price in Colones, Dalasi or Euros, pay with any token on any chain, receive stablecoins on Polygon.",
+  "description": "Nimiq Pay Mini-App: Multi-fiat invoicing in Colones, Dalasi or Euros, cross-chain payment via Aurora Intents, settled in USDT on Polygon in Nimiq Pay.",
   "scripts": {
     "server": "node server/index.js",
-    "client": "vite",
+    "client": "vite --host",
     "build": "vite build",
     "preview": "vite preview",
-    "dev": "concurrently -n \"BACKEND,FRONTEND\" -c \"cyan,magenta\" \"node server/index.js\" \"vite\""
+    "dev": "concurrently -n \"BACKEND,FRONTEND\" -c \"cyan,amber\" \"node server/index.js\" \"vite --host\""
   },
   "dependencies": {
+    "@nimiq/mini-app-sdk": "^0.2.5",
     "canvas-confetti": "^1.9.4",
     "clsx": "^2.1.1",
     "cors": "^2.8.5",
@@ -19,7 +20,8 @@
     "lucide-react": "^1.16.0",
     "qrcode.react": "^4.2.0",
     "react": "^19.2.4",
-    "react-dom": "^19.2.4"
+    "react-dom": "^19.2.4",
+    "viem": "^2.45.3"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.5",

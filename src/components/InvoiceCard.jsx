@@ -136,3 +136,4 @@ export function InvoiceCard({ invoice, onSelectInvoice, onOpenReceipt }) {
     </div>
   );
 }
+

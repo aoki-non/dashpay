@@ -39,7 +39,6 @@ router.post('/', async (req, res) => {
     const {
       merchantName,
       merchantPolygonAddress,
-      stablecoin,
       fiatCurrency,
       fiatAmount,
       description,
@@ -47,21 +46,19 @@ router.post('/', async (req, res) => {
       metadata
     } = req.body;
 
-    // Validate Polygon address if provided
-    if (merchantPolygonAddress && !/^0x[a-fA-F0-9]{40}$/.test(merchantPolygonAddress)) {
+    if (!merchantPolygonAddress || !/^0x[a-fA-F0-9]{40}$/.test(merchantPolygonAddress)) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid Polygon recipient address. Must be a valid 0x EVM address.'
+        error: 'A valid Polygon (EVM) recipient address is required to receive USDT settlement.'
       });
     }
 
     const invoice = await createInvoice({
-      merchantName: merchantName || CONFIG.DEFAULT_MERCHANT.name,
-      merchantPolygonAddress: merchantPolygonAddress || CONFIG.DEFAULT_MERCHANT.polygonAddress,
-      stablecoin: stablecoin || 'USDC',
+      merchantName: merchantName || 'Nimiq Pay Merchant',
+      merchantPolygonAddress,
       fiatCurrency: fiatCurrency || 'CRC',
       fiatAmount,
-      description: description || 'Merchant Checkout Order',
+      description: description || 'Nimiq Pay Checkout',
       customerEmail,
       metadata
     });

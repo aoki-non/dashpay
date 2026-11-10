@@ -158,3 +158,4 @@ export function ReceiptModal({ isOpen, onClose, invoice }) {
     </div>
   );
 }
+

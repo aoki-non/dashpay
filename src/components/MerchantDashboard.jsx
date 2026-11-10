@@ -1,206 +1,203 @@
 import React, { useState } from 'react';
-import { Plus, ArrowUpRight, Coins, ShieldCheck, ExternalLink, Filter, TrendingUp, Layers, CheckCircle2 } from 'lucide-react';
+import { Plus, ArrowUpRight, Coins, ShieldCheck, ExternalLink, Filter, TrendingUp, Layers, CheckCircle2, Wallet, RefreshCw } from 'lucide-react';
 import { InvoiceCard } from './InvoiceCard';
 import { formatFiat, truncateAddress } from '../services/formatters';
 
 export function MerchantDashboard({
   invoices,
   fxRates,
-  merchantConfig,
+  merchantAddress,
+  polygonUsdtBalance,
+  isConnectingWallet,
+  onConnectWallet,
   onOpenCreateInvoice,
   onSelectInvoice,
-  onOpenReceipt
+  onOpenReceipt,
+  onOpenSettings
 }) {
   const [filterCurrency, setFilterCurrency] = useState('ALL');
-  const [filterStatus, setFilterStatus] = useState('ALL');
 
-  // Filter invoices
   const filtered = invoices.filter(inv => {
     if (filterCurrency !== 'ALL' && inv.fiatCurrency !== filterCurrency) return false;
-    if (filterStatus !== 'ALL' && inv.status !== filterStatus) return false;
     return true;
   });
 
-  // Calculate stats
-  const completedInvoices = invoices.filter(inv => inv.status === 'COMPLETED');
-  const totalVolumeUsd = completedInvoices.reduce((sum, inv) => sum + (inv.usdAmount || 0), 0);
+  const completedInvoices = invoices.filter(inv => inv.status === 'COMPLETED' || inv.status === 'SUCCESS');
+  const totalSettledUsdt = completedInvoices.reduce((sum, inv) => sum + (inv.usdAmount || 0), 0);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       
-      {/* Hero / Header Section */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-indigo-950/40 via-purple-950/30 to-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 relative overflow-hidden">
-        <div className="relative z-10 max-w-2xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-semibold mb-3">
-            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span>Gateway Ready • Direct Aurora Intents Engine</span>
+      {/* Nimiq Pay Wallet Status Header */}
+      {!merchantAddress ? (
+        <div className="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-slate-900 border border-amber-500/30 rounded-3xl p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="max-w-xl">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[11px] font-bold mb-2">
+              <span>Nimiq Pay Mini-App Integration</span>
+            </div>
+            <h2 className="text-xl sm:text-2xl font-black text-white">
+              Connect Nimiq Pay Wallet
+            </h2>
+            <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+              Connect your Nimiq Pay EVM wallet to receive payments directly in USDT on Polygon (Matic). Your customers can pay with any cryptocurrency on any chain via Aurora Intents.
+            </p>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-            Accept Any Token. Settle Stablecoins on Polygon.
-          </h1>
-          <p className="text-slate-300 text-sm mt-2 leading-relaxed">
-            Price your goods or services in <strong className="text-white">Costa Rican Colones (₡)</strong>, <strong className="text-white">Gambian Dalasi (D)</strong> or <strong className="text-white">Euros (€)</strong>. Payers can send BTC, SOL, ETH, or 200+ tokens from 35+ chains — you receive guaranteed <strong className="text-indigo-400">USDC or USDT on Polygon</strong>.
-          </p>
-        </div>
 
-        <div className="relative z-10 flex flex-col sm:flex-row gap-3">
           <button
             type="button"
-            onClick={onOpenCreateInvoice}
-            className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-sm shadow-xl shadow-indigo-600/30 flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98]"
+            onClick={onConnectWallet}
+            disabled={isConnectingWallet}
+            className="px-6 py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-lg shadow-amber-500/20 flex items-center gap-2 transition-all hover:scale-[1.02] shrink-0"
           >
-            <Plus className="h-5 w-5" />
-            <span>Create Invoice</span>
+            {isConnectingWallet ? (
+              <>
+                <RefreshCw className="h-4 w-4 animate-spin" />
+                <span>Connecting...</span>
+              </>
+            ) : (
+              <>
+                <Wallet className="h-4 w-4" />
+                <span>Connect Nimiq Pay</span>
+              </>
+            )}
           </button>
         </div>
+      ) : (
+        <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-amber-950/20 border border-slate-800 rounded-3xl p-6 sm:p-7 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-emerald-400"></span>
+              <span className="text-xs font-mono text-slate-300 font-semibold">
+                Nimiq Wallet: {truncateAddress(merchantAddress, 6, 6)}
+              </span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-purple-500/10 text-purple-300 border border-purple-500/20">
+                Polygon (137)
+              </span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-black text-white">
+              Multi-Fiat ➔ Polygon USDT POS
+            </h1>
+            <p className="text-xs text-slate-400 mt-1">
+              Create invoices in Costa Rican / Salvadoran Colones (₡), Gambian Dalasi (D), or Euros (€).
+            </p>
+          </div>
 
-        {/* Background glow decoration */}
-        <div className="absolute -right-16 -top-16 w-80 h-80 bg-indigo-600/15 rounded-full blur-3xl pointer-events-none"></div>
-      </div>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={onOpenCreateInvoice}
+              className="px-5 py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-lg shadow-amber-500/20 flex items-center gap-2 transition-all hover:scale-[1.02]"
+            >
+              <Plus className="h-4 w-4" />
+              <span>New Invoice</span>
+            </button>
+          </div>
+        </div>
+      )}
 
-      {/* Overview Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Metrics Row */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         
-        {/* Metric 1: Total Volume Settled */}
-        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5">
-          <div className="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">
-            <span>Settled Volume</span>
-            <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400">
-              <TrendingUp className="h-4 w-4" />
+        {/* Metric 1: Nimiq Pay USDT Balance */}
+        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4">
+          <div className="flex items-center justify-between text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-1">
+            <span>Nimiq Pay Polygon USDT</span>
+            <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400">
+              <Wallet className="h-3.5 w-3.5" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-white font-mono">
-            ${totalVolumeUsd.toFixed(2)}
-            <span className="text-xs font-normal text-slate-400 ml-1.5">USDC/USDT</span>
+          <div className="text-xl font-black text-emerald-400 font-mono">
+            {polygonUsdtBalance} <span className="text-xs text-slate-400 font-normal">USDT</span>
           </div>
-          <span className="text-[11px] text-emerald-400 flex items-center gap-1 mt-1 font-medium">
-            <CheckCircle2 className="h-3 w-3" />
+          <span className="text-[10px] text-slate-500 mt-0.5 block">
+            Live on-chain balance on Polygon PoS
+          </span>
+        </div>
+
+        {/* Metric 2: Settled Invoices Volume */}
+        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4">
+          <div className="flex items-center justify-between text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-1">
+            <span>Settled Volume</span>
+            <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-400">
+              <TrendingUp className="h-3.5 w-3.5" />
+            </div>
+          </div>
+          <div className="text-xl font-black text-white font-mono">
+            ${totalSettledUsdt.toFixed(2)} <span className="text-xs text-slate-400 font-normal">USDT</span>
+          </div>
+          <span className="text-[10px] text-slate-500 mt-0.5 block">
             {completedInvoices.length} paid out on Polygon
           </span>
         </div>
 
-        {/* Metric 2: Total Invoices */}
-        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5">
-          <div className="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">
-            <span>Total Invoices</span>
-            <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400">
-              <Layers className="h-4 w-4" />
-            </div>
-          </div>
-          <div className="text-2xl font-bold text-white font-mono">
-            {invoices.length}
-          </div>
-          <span className="text-[11px] text-slate-400 mt-1 block">
-            Across 4 fiat currencies
-          </span>
-        </div>
-
-        {/* Metric 3: Supported Currencies */}
-        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5">
-          <div className="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">
+        {/* Metric 3: Pricing Currencies */}
+        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4">
+          <div className="flex items-center justify-between text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-1">
             <span>Pricing Currencies</span>
-            <div className="p-2 rounded-xl bg-purple-500/10 text-purple-400">
-              <Coins className="h-4 w-4" />
+            <div className="p-1.5 rounded-lg bg-purple-500/10 text-purple-400">
+              <Coins className="h-3.5 w-3.5" />
             </div>
           </div>
-          <div className="flex items-center gap-1.5 text-lg font-bold text-white mt-1">
+          <div className="flex items-center gap-1.5 text-base font-bold text-white mt-0.5">
             <span>🇨🇷 ₡</span>
             <span>🇸🇻 ₡</span>
             <span>🇬🇲 D</span>
             <span>🇪🇺 €</span>
           </div>
-          <span className="text-[11px] text-slate-400 mt-1 block">
-            CRC, SVC, GMD & EUR supported
+          <span className="text-[10px] text-slate-500 mt-0.5 block">
+            CRC, SVC, GMD, and EUR
           </span>
-        </div>
-
-        {/* Metric 4: Payout Destination */}
-        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5">
-          <div className="flex items-center justify-between text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">
-            <span>Payout Destination</span>
-            <div className="p-2 rounded-xl bg-purple-500/10 text-purple-400">
-              <ShieldCheck className="h-4 w-4" />
-            </div>
-          </div>
-          <div className="text-xs font-mono font-bold text-white truncate">
-            {truncateAddress(merchantConfig.polygonAddress, 6, 6)}
-          </div>
-          <a
-            href={`https://polygonscan.com/address/${merchantConfig.polygonAddress}`}
-            target="_blank"
-            rel="noreferrer"
-            className="text-[11px] text-indigo-400 hover:text-indigo-300 flex items-center gap-1 mt-1 font-medium"
-          >
-            <span>Polygonscan (Chain 137)</span>
-            <ExternalLink className="h-3 w-3" />
-          </a>
         </div>
 
       </div>
 
-      {/* Filter and Invoices List */}
+      {/* Invoices Section */}
       <div>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-3">
           <div>
-            <h2 className="text-lg font-bold text-white">Merchant Invoices</h2>
-            <p className="text-xs text-slate-400">
-              Select any invoice to test the customer checkout and cross-chain payment flow.
+            <h2 className="text-base font-bold text-white">Invoices</h2>
+            <p className="text-[11px] text-slate-400">
+              Select an invoice to open checkout or share the link with the payer.
             </p>
           </div>
 
-          {/* Filters */}
-          <div className="flex flex-wrap items-center gap-2">
-            
-            {/* Currency Filter */}
-            <div className="flex p-1 bg-slate-900 rounded-xl border border-slate-800 text-xs">
-              {['ALL', 'CRC', 'SVC', 'GMD', 'EUR'].map(cur => (
-                <button
-                  key={cur}
-                  type="button"
-                  onClick={() => setFilterCurrency(cur)}
-                  className={`px-2.5 py-1 rounded-lg font-medium transition-colors ${
-                    filterCurrency === cur
-                      ? 'bg-indigo-600 text-white font-bold'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  {cur === 'ALL' ? 'All' : cur}
-                </button>
-              ))}
-            </div>
-
-            {/* Status Filter */}
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-indigo-500"
-            >
-              <option value="ALL">All Statuses</option>
-              <option value="PENDING">Pending</option>
-              <option value="QUOTED">Quoted</option>
-              <option value="PROCESSING">Processing</option>
-              <option value="COMPLETED">Settled</option>
-            </select>
-
+          {/* Filter */}
+          <div className="flex p-1 bg-slate-900 rounded-xl border border-slate-800 text-xs">
+            {['ALL', 'CRC', 'SVC', 'GMD', 'EUR'].map(cur => (
+              <button
+                key={cur}
+                type="button"
+                onClick={() => setFilterCurrency(cur)}
+                className={`px-2.5 py-1 rounded-lg font-bold transition-colors ${
+                  filterCurrency === cur
+                    ? 'bg-amber-500 text-slate-950 font-bold'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                {cur === 'ALL' ? 'All' : cur}
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Invoice Grid */}
+        {/* Invoices List */}
         {filtered.length === 0 ? (
-          <div className="text-center py-12 bg-slate-900/40 border border-slate-800/80 rounded-2xl">
-            <Coins className="h-10 w-10 text-slate-600 mx-auto mb-3" />
-            <h3 className="text-sm font-semibold text-white">No invoices found</h3>
-            <p className="text-xs text-slate-400 mt-1">Create an invoice in Colones, Dalasi or Euros to get started.</p>
+          <div className="text-center py-10 bg-slate-900/40 border border-slate-800/80 rounded-2xl">
+            <Coins className="h-8 w-8 text-slate-600 mx-auto mb-2" />
+            <h3 className="text-xs font-bold text-white">No invoices yet</h3>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              Create an invoice to receive payments from any chain settling in USDT on Polygon.
+            </p>
             <button
               type="button"
               onClick={onOpenCreateInvoice}
-              className="mt-4 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition-colors"
+              className="mt-3 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold rounded-xl transition-colors"
             >
               Create Invoice
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {filtered.map(invoice => (
               <InvoiceCard
                 key={invoice.id}

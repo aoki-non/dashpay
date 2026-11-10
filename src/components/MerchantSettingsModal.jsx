@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
-import { X, Shield, Wallet, Key, CheckCircle, ExternalLink } from 'lucide-react';
+import { X, Shield, Wallet, Key, ExternalLink, CheckCircle2, AlertCircle } from 'lucide-react';
 
-export function MerchantSettingsModal({ isOpen, onClose, config, onSave }) {
+export function MerchantSettingsModal({ isOpen, onClose, config, onSave, onConnectWallet }) {
   if (!isOpen) return null;
 
   const [polygonAddress, setPolygonAddress] = useState(config.polygonAddress || '');
-  const [defaultStablecoin, setDefaultStablecoin] = useState(config.defaultStablecoin || 'USDC');
   const [name, setName] = useState(config.name || '');
   const [auroraApiKey, setAuroraApiKey] = useState(config.auroraApiKey || '');
   const [error, setError] = useState('');
@@ -19,9 +18,8 @@ export function MerchantSettingsModal({ isOpen, onClose, config, onSave }) {
     setError('');
     onSave({
       polygonAddress,
-      defaultStablecoin,
       name,
-      auroraApiKey
+      auroraApiKey: auroraApiKey.trim()
     });
     onClose();
   };
@@ -34,12 +32,12 @@ export function MerchantSettingsModal({ isOpen, onClose, config, onSave }) {
         aria-labelledby="settings-modal-title"
         aria-modal="true"
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/50">
           <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
+            <div className="h-8 w-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
               <Wallet className="h-4 w-4" />
             </div>
-            <h2 id="settings-modal-title" className="text-lg font-bold text-white">Merchant Payout Settings</h2>
+            <h2 id="settings-modal-title" className="text-base font-bold text-white">Nimiq Pay & Aurora Intents Settings</h2>
           </div>
           <button 
             type="button" 
@@ -57,32 +55,26 @@ export function MerchantSettingsModal({ isOpen, onClose, config, onSave }) {
             </div>
           )}
 
+          {/* Polygon Wallet */}
           <div>
-            <label htmlFor="merchant-name-input" className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-              Merchant Store Name
-            </label>
-            <input
-              id="merchant-name-input"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors"
-              placeholder="e.g. San José Fine Coffee"
-            />
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between mb-1.5">
               <label htmlFor="polygon-addr-input" className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
-                Polygon Receiving Address (EVM) <span className="text-indigo-400">*</span>
+                Polygon (Matic) Payout Address <span className="text-amber-400">*</span>
               </label>
-              <button
-                type="button"
-                onClick={() => setPolygonAddress('0x71C7656EC7ab88b098defB751B7401B5f6d8976F')}
-                className="text-[11px] text-indigo-400 hover:text-indigo-300"
-              >
-                Use Demo Address
-              </button>
+              {typeof window !== 'undefined' && window.ethereum && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (onConnectWallet) {
+                      const addr = await onConnectWallet();
+                      if (addr) setPolygonAddress(addr);
+                    }
+                  }}
+                  className="text-[11px] text-amber-400 hover:text-amber-300 font-semibold"
+                >
+                  Auto-fill from Nimiq Pay
+                </button>
+              )}
             </div>
             <input
               id="polygon-addr-input"
@@ -90,76 +82,38 @@ export function MerchantSettingsModal({ isOpen, onClose, config, onSave }) {
               value={polygonAddress}
               onChange={(e) => setPolygonAddress(e.target.value.trim())}
               required
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm font-mono text-white focus:outline-none focus:border-indigo-500 transition-colors"
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs font-mono text-white focus:outline-none focus:border-amber-500 transition-colors"
               placeholder="0x..."
             />
-            <p className="text-[11px] text-slate-400 mt-1.5 flex items-center gap-1">
-              <Shield className="h-3 w-3 text-emerald-400" />
-              All incoming payments from any chain are automatically swapped and delivered directly here on Polygon.
+            <p className="text-[11px] text-slate-400 mt-1.5">
+              When running inside Nimiq Pay, this address is automatically populated from your Nimiq EVM wallet.
             </p>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-              Default Polygon Stablecoin
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              <label 
-                className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
-                  defaultStablecoin === 'USDC' 
-                    ? 'border-indigo-500 bg-indigo-500/10 text-white' 
-                    : 'border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-700'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <span className="font-bold text-sm text-indigo-400 font-mono">USDC</span>
-                  <span className="text-xs text-slate-400">Native Polygon</span>
-                </div>
-                <input
-                  type="radio"
-                  name="stablecoin"
-                  value="USDC"
-                  checked={defaultStablecoin === 'USDC'}
-                  onChange={() => setDefaultStablecoin('USDC')}
-                  className="sr-only"
-                />
-                {defaultStablecoin === 'USDC' && <CheckCircle className="h-4 w-4 text-indigo-400" />}
-              </label>
-
-              <label 
-                className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${
-                  defaultStablecoin === 'USDT' 
-                    ? 'border-emerald-500 bg-emerald-500/10 text-white' 
-                    : 'border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-700'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <span className="font-bold text-sm text-emerald-400 font-mono">USDT</span>
-                  <span className="text-xs text-slate-400">Tether USD</span>
-                </div>
-                <input
-                  type="radio"
-                  name="stablecoin"
-                  value="USDT"
-                  checked={defaultStablecoin === 'USDT'}
-                  onChange={() => setDefaultStablecoin('USDT')}
-                  className="sr-only"
-                />
-                {defaultStablecoin === 'USDT' && <CheckCircle className="h-4 w-4 text-emerald-400" />}
-              </label>
+          {/* Settlement Token: Fixed to USDT on Polygon */}
+          <div className="p-3.5 bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-between text-xs">
+            <div>
+              <span className="text-slate-400 block text-[11px] font-semibold uppercase">Settlement Token</span>
+              <span className="font-bold text-white font-mono text-sm text-emerald-400">USDT (Polygon PoS)</span>
+              <span className="font-mono text-[10px] text-slate-500 block">0xc2132D05D31c914a87C6611C10748AEb04B58e8F</span>
             </div>
+            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              Nimiq Pay Native
+            </span>
           </div>
 
+          {/* Aurora Intents API Key */}
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <label htmlFor="aurora-key-input" className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
-                Aurora Intents API Key <span className="text-slate-500 font-normal lowercase">(optional)</span>
+            <div className="flex items-center justify-between mb-1.5">
+              <label htmlFor="aurora-key-input" className="block text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                <Key className="h-3.5 w-3.5 text-amber-400" />
+                <span>Aurora Intents API Key</span>
               </label>
               <a 
                 href="https://portal.intents.aurora.dev" 
                 target="_blank" 
                 rel="noreferrer"
-                className="text-[11px] text-slate-400 hover:text-indigo-400 flex items-center gap-1"
+                className="text-[11px] text-amber-400 hover:text-amber-300 flex items-center gap-1 font-semibold"
               >
                 <span>Get API Key</span>
                 <ExternalLink className="h-3 w-3" />
@@ -170,11 +124,11 @@ export function MerchantSettingsModal({ isOpen, onClose, config, onSave }) {
               type="text"
               value={auroraApiKey}
               onChange={(e) => setAuroraApiKey(e.target.value.trim())}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm font-mono text-white focus:outline-none focus:border-indigo-500 transition-colors"
-              placeholder="Leave blank to use direct Aurora Intents engine"
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs font-mono text-white focus:outline-none focus:border-amber-500 transition-colors"
+              placeholder="e.g. your-portal-key or leave blank for public solver gateway"
             />
-            <p className="text-[11px] text-slate-500 mt-1">
-              If left blank, the app uses direct 1Click Defuse solver liquidity rails with zero setup needed.
+            <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
+              Generate your API key at <strong className="text-slate-400">portal.intents.aurora.dev</strong>. When provided, quotes use your dedicated Aurora Intents referral bucket to collect solver partner fees. If left empty, requests route through the public solver network (1click.chaindefuser.com).
             </p>
           </div>
 
@@ -188,9 +142,9 @@ export function MerchantSettingsModal({ isOpen, onClose, config, onSave }) {
             </button>
             <button
               type="submit"
-              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-lg shadow-indigo-600/30 transition-all"
+              className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold shadow-lg shadow-amber-500/20 transition-all"
             >
-              Save Configuration
+              Save Settings
             </button>
           </div>
         </form>

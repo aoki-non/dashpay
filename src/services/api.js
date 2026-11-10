@@ -10,7 +10,7 @@ export async function fetchFxRates() {
 }
 
 /**
- * Convert fiat amount to USD / Polygon stablecoin
+ * Convert fiat amount to USD / Polygon USDT
  */
 export async function convertFiat(amount, currency) {
   const res = await fetch(`${API_BASE}/fx/convert`, {
@@ -74,7 +74,7 @@ export async function fetchSupportedTokens(apiKey = '') {
 }
 
 /**
- * Request cross-chain exact-output quote for an invoice
+ * Request cross-chain exact-output quote for an invoice targeting USDT on Polygon
  */
 export async function requestQuoteForInvoice({ invoiceId, originAsset, refundTo, slippageTolerance = 100, apiKey = '', dry = false }) {
   const res = await fetch(`${API_BASE}/quote/for-invoice`, {
@@ -102,22 +102,6 @@ export async function fetchSwapStatus({ depositAddress, depositMemo, invoiceId, 
   if (!res.ok) {
     const err = await res.json();
     throw new Error(err.error || 'Failed to fetch status');
-  }
-  return res.json();
-}
-
-/**
- * Simulate payment progression in Demo Mode
- */
-export async function advanceSimulation(invoiceId, step) {
-  const res = await fetch(`${API_BASE}/simulate/advance`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ invoiceId, step })
-  });
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.error || 'Simulation failed');
   }
   return res.json();
 }

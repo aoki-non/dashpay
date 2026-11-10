@@ -2,9 +2,8 @@ import { CONFIG } from '../config.js';
 
 let cachedTokens = null;
 let lastTokensFetchedAt = 0;
-const TOKENS_CACHE_TTL = 15 * 60 * 1000; // 15 mins
+const TOKENS_CACHE_TTL = 15 * 60 * 1000;
 
-// Chain metadata for UI display
 export const CHAIN_METADATA = {
   sol: { name: 'Solana', icon: '☀️', explorer: 'https://solscan.io/tx/' },
   btc: { name: 'Bitcoin', icon: '₿', explorer: 'https://mempool.space/tx/' },
@@ -29,31 +28,46 @@ export const CHAIN_METADATA = {
   monad: { name: 'Monad', icon: '🟣', explorer: 'https://monadexplorer.com/tx/' }
 };
 
+function resolveApiKey(customKey) {
+  return (customKey || CONFIG.AURORA_INTENTS_API_KEY || '').trim();
+}
+
 /**
- * Fetch supported cross-chain tokens from Aurora Intents / 1Click API
+ * Fetch supported tokens from Aurora Intents
  */
-export async function getSupportedTokens(apiKey = '') {
+export async function getSupportedTokens(customKey = '') {
   const now = Date.now();
+  const apiKey = resolveApiKey(customKey);
+
   if (cachedTokens && (now - lastTokensFetchedAt) < TOKENS_CACHE_TTL && !apiKey) {
     return cachedTokens;
   }
 
   try {
-    let url = `${CONFIG.AURORA_INTENTS_URL}/tokens`;
+    let url = `${CONFIG.AURORA_INTENTS_PUBLIC_URL}/tokens`;
     if (apiKey) {
       url = `${CONFIG.AURORA_INTENTS_OFFICIAL_API}/tokens/${apiKey}`;
     }
 
     const res = await fetch(url, {
-      headers: { 'User-Agent': 'DashPay-Merchant-Gateway/1.0' }
+      headers: { 'User-Agent': 'NimiqPay-AuroraIntents/1.0' }
     });
 
     if (!res.ok) {
-      throw new Error(`Token fetch failed with status ${res.status}`);
+      // If portal key fails (e.g. 404), fall back to public solver URL
+      if (apiKey) {
+        console.warn(`Aurora Intents API key '${apiKey}' returned ${res.status}. Falling back to public solver endpoint.`);
+        url = `${CONFIG.AURORA_INTENTS_PUBLIC_URL}/tokens`;
+        const fallbackRes = await fetch(url, { headers: { 'User-Agent': 'NimiqPay-AuroraIntents/1.0' } });
+        if (!fallbackRes.ok) throw new Error(`Tokens API failed with ${fallbackRes.status}`);
+        var rawData = await fallbackRes.json();
+      } else {
+        throw new Error(`Tokens API failed with ${res.status}`);
+      }
+    } else {
+      var rawData = await res.json();
     }
 
-    const rawData = await res.json();
-    // 1Click returns array directly, official Intents API returns { tokens: [...] }
     const tokenList = Array.isArray(rawData) ? rawData : (rawData.tokens || []);
 
     const enrichedTokens = tokenList.map(t => {
@@ -63,18 +77,17 @@ export async function getSupportedTokens(apiKey = '') {
         explorer: ''
       };
 
-      const isPolygonStablecoin = t.blockchain === 'pol' && (t.symbol === 'USDC' || t.symbol === 'USDT');
+      const isPolygonUsdt = t.blockchain === 'pol' && t.symbol === 'USDT';
 
       return {
         ...t,
         chainName: chainInfo.name,
         chainIcon: chainInfo.icon,
         explorerUrl: chainInfo.explorer,
-        isPolygonStablecoin
+        isPolygonUsdt
       };
     });
 
-    // Unique blockchains
     const chainsMap = {};
     for (const t of enrichedTokens) {
       if (!chainsMap[t.blockchain]) {
@@ -91,7 +104,8 @@ export async function getSupportedTokens(apiKey = '') {
     const result = {
       tokens: enrichedTokens,
       chains: Object.values(chainsMap).sort((a, b) => b.tokenCount - a.tokenCount),
-      polygonStablecoins: enrichedTokens.filter(t => t.isPolygonStablecoin),
+      polygonUsdt: enrichedTokens.find(t => t.isPolygonUsdt) || null,
+      usingOfficialKey: Boolean(apiKey),
       timestamp: now
     };
 
@@ -109,24 +123,24 @@ export async function getSupportedTokens(apiKey = '') {
 }
 
 /**
- * Request an EXACT_OUTPUT quote from Aurora Intents / 1Click.
- * The destination amount is fixed to the merchant's stablecoin invoice amount on Polygon.
+ * Request cross-chain EXACT_OUTPUT quote targeting USDT on Polygon
  */
 export async function requestQuote({
   originAsset,
-  destinationAsset,
-  amount, // Smallest unit of destination asset (e.g. 1000000 for 1 USDC)
-  recipient, // Merchant Polygon address
-  refundTo,  // Payer refund address
+  destinationAsset = CONFIG.POLYGON.usdt.assetId,
+  amount, // Smallest unit of USDT on Polygon (6 decimals, e.g. 5000000 for 5 USDT)
+  recipient, // Merchant Nimiq Pay Polygon address
+  refundTo,  // Payer origin chain address
   slippageTolerance = 100, // 1%
-  apiKey = '',
+  apiKey: customKey = '',
   dry = false
 }) {
-  if (!originAsset || !destinationAsset || !amount || !recipient || !refundTo) {
-    throw new Error('Missing required quote parameters (originAsset, destinationAsset, amount, recipient, refundTo)');
-  }
+  if (!originAsset) throw new Error('originAsset is required');
+  if (!recipient) throw new Error('recipient (merchant Polygon address) is required');
+  if (!refundTo) throw new Error('refundTo (payer refund address) is required');
+  if (!amount) throw new Error('amount in smallest unit is required');
 
-  // Quote deadline: 15 minutes from now
+  const apiKey = resolveApiKey(customKey);
   const deadline = new Date(Date.now() + 15 * 60 * 1000).toISOString();
 
   const payload = {
@@ -144,69 +158,85 @@ export async function requestQuote({
     deadline
   };
 
-  let quoteUrl = `${CONFIG.AURORA_INTENTS_URL}/quote`;
+  let quoteUrl = `${CONFIG.AURORA_INTENTS_PUBLIC_URL}/quote`;
   if (apiKey) {
     quoteUrl = `${CONFIG.AURORA_INTENTS_OFFICIAL_API}/quote/${apiKey}`;
   }
 
-  const res = await fetch(quoteUrl, {
+  let res = await fetch(quoteUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'User-Agent': 'DashPay-Merchant-Gateway/1.0',
+      'User-Agent': 'NimiqPay-AuroraIntents/1.0',
       'x-aurora-product': 'ic'
     },
     body: JSON.stringify(payload)
   });
 
+  // If official portal key returns 404/401, fallback to public solver URL
+  if (!res.ok && apiKey && (res.status === 404 || res.status === 401)) {
+    console.warn(`Aurora Intents official endpoint returned ${res.status} for key '${apiKey}'. Retrying via public solver gateway.`);
+    quoteUrl = `${CONFIG.AURORA_INTENTS_PUBLIC_URL}/quote`;
+    res = await fetch(quoteUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'NimiqPay-AuroraIntents/1.0',
+        'x-aurora-product': 'ic'
+      },
+      body: JSON.stringify(payload)
+    });
+  }
+
   if (!res.ok) {
     const errorBody = await res.text();
-    console.error('Aurora Intents quote error:', res.status, errorBody);
-    let parsedMsg = errorBody;
+    let message = errorBody;
     try {
-      const jsonErr = JSON.parse(errorBody);
-      parsedMsg = jsonErr.message || errorBody;
+      const parsed = JSON.parse(errorBody);
+      message = parsed.message || errorBody;
     } catch {}
-    throw new Error(`Quote request failed (${res.status}): ${parsedMsg}`);
+    throw new Error(`Quote failed (${res.status}): ${message}`);
   }
 
   const quoteData = await res.json();
   return {
     ...quoteData,
     destinationChain: 'Polygon',
-    destinationChainId: 137
+    destinationChainId: 137,
+    destinationToken: 'USDT',
+    destinationContract: CONFIG.POLYGON.usdt.contractAddress
   };
 }
 
 /**
- * Query swap execution status using the unique deposit address
+ * Check execution status of a swap using the unique deposit address
  */
-export async function getSwapStatus(depositAddress, depositMemo = null, apiKey = '') {
-  if (!depositAddress) {
-    throw new Error('depositAddress is required');
-  }
+export async function getSwapStatus(depositAddress, depositMemo = null, customKey = '') {
+  if (!depositAddress) throw new Error('depositAddress is required');
 
-  let statusUrl = `${CONFIG.AURORA_INTENTS_URL}/status?depositAddress=${encodeURIComponent(depositAddress)}`;
-  if (depositMemo) {
-    statusUrl += `&depositMemo=${encodeURIComponent(depositMemo)}`;
-  }
+  const apiKey = resolveApiKey(customKey);
+  let statusUrl = `${CONFIG.AURORA_INTENTS_PUBLIC_URL}/status?depositAddress=${encodeURIComponent(depositAddress)}`;
+  if (depositMemo) statusUrl += `&depositMemo=${encodeURIComponent(depositMemo)}`;
 
   if (apiKey) {
     statusUrl = `${CONFIG.AURORA_INTENTS_OFFICIAL_API}/status/${apiKey}?depositAddress=${encodeURIComponent(depositAddress)}`;
-    if (depositMemo) {
-      statusUrl += `&depositMemo=${encodeURIComponent(depositMemo)}`;
-    }
+    if (depositMemo) statusUrl += `&depositMemo=${encodeURIComponent(depositMemo)}`;
   }
 
-  const res = await fetch(statusUrl, {
-    headers: { 'User-Agent': 'DashPay-Merchant-Gateway/1.0' }
+  let res = await fetch(statusUrl, {
+    headers: { 'User-Agent': 'NimiqPay-AuroraIntents/1.0' }
   });
+
+  if (!res.ok && apiKey && (res.status === 404 || res.status === 401)) {
+    statusUrl = `${CONFIG.AURORA_INTENTS_PUBLIC_URL}/status?depositAddress=${encodeURIComponent(depositAddress)}`;
+    if (depositMemo) statusUrl += `&depositMemo=${encodeURIComponent(depositMemo)}`;
+    res = await fetch(statusUrl, { headers: { 'User-Agent': 'NimiqPay-AuroraIntents/1.0' } });
+  }
 
   if (!res.ok) {
     const errText = await res.text();
-    throw new Error(`Status query failed (${res.status}): ${errText}`);
+    throw new Error(`Status check failed (${res.status}): ${errText}`);
   }
 
-  const data = await res.json();
-  return data;
+  return res.json();
 }
